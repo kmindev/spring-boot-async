@@ -30,8 +30,9 @@ public class AsyncController {
     }
 
     @GetMapping("/4")
-    public String asyncReturnCall1() {
-        return asyncService.asyncReturnCall_1();
+    public String asyncReturnCall1() throws InterruptedException {
+        asyncService.asyncListenableFutureCall();
+        return "success";
     }
 
 }

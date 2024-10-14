@@ -5,10 +5,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.task.TaskRejectedException;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.util.concurrent.ListenableFuture;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -57,35 +59,67 @@ public class AsyncService {
         }
     }
 
-    public String asyncReturnCall_1() {
-        log.info("asyncReturnCall_1");
-        StringBuilder result = new StringBuilder();
+    public void asyncFutureCall() throws InterruptedException {
+        List<Future<String>> futures = new ArrayList<>();
 
-        List<CompletableFuture<Void>> futures = new ArrayList<>(); // CompletableFuture 리스트 생성
-
+        // 비동기 메서드 호출
         for (int i = 0; i < 10; i++) {
-            // 비동기 메서드 호출
-            CompletableFuture<Void> future = emailService.sendMailWithReturn(i)
-                    .thenAccept(res -> {
-                        synchronized (result) { // 스레드 동기화 => race condition 방지
-                            result.append(res); // 결과를 비동기적으로 바로 추가
-                        }
-                    })
-                    .exceptionally(e -> {
-                        log.error("예외 발생: {}", e.getMessage());
-                        return null;
-                    });
-
-            futures.add(future); // CompletableFuture 리스트에 추가
+            futures.add(emailService.sendMailWithFuture(i));
         }
 
-        // 모든 작업들이 끝나길 기다리지 않고 비동기 처리됨
-
-        // 모든 작업 완료 후 반환
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-
-        return result.toString(); // 결과 반환
+        // 결과 출력
+        for (Future<String> future : futures) {
+            try {
+                System.out.println(future.get()); // Future는 블로킹하여 결과를 출력
+            } catch (Exception e) {
+                System.err.println("Exception: " + e.getMessage());
+            }
+        }
     }
 
+    public void asyncListenableFutureCall() throws InterruptedException {
+        List<ListenableFuture<String>> futures = new ArrayList<>();
+
+        // 비동기 메서드 호출
+        for (int i = 0; i < 10; i++) {
+            futures.add(emailService.sendMailWithListenableFuture(i));
+        }
+
+        // 결과 출력 및 예외 처리
+        for (ListenableFuture<String> future : futures) {
+            // 콜백 등록
+            future.addCallback(
+                    System.out::println, // 정상 완료시 콜백
+                    ex -> System.err.println("Exception: " + ex.getMessage()) // 예외 처리 콜백
+            );
+
+            try {
+                future.get(); // 작업 완료까지 대기
+            } catch (Exception e) {
+                System.err.println("Exception: " + e.getMessage());
+            }
+        }
+    }
+
+    public void asyncCompletableFutureCall() throws InterruptedException {
+        List<CompletableFuture<String>> futures = new ArrayList<>();
+
+        // 비동기 메서드 호출
+        for (int i = 0; i < 10; i++) {
+            futures.add(emailService.sendMailWithCompletableFuture(i));
+        }
+
+        // CompletableFuture로 결과 출력
+        for (CompletableFuture<String> future : futures) {
+            future.thenAccept(System.out::println)
+                    .exceptionally(error -> {
+                        System.err.println("Exception: " + error.getMessage());
+                        return null;
+                    });
+        }
+
+        // 모든 작업 완료까지 대기
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+    }
 
 }

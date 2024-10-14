@@ -36,9 +36,18 @@ class AsyncApplicationTests {
     }
 
     @Test
-    void asyncCall_6_test() {
-        String result = asyncService.asyncReturnCall_1();
-        System.out.println("result = " + result);
+    void asyncFutureCallTest() throws InterruptedException {
+        asyncService.asyncFutureCall();
+    }
+
+    @Test
+    void asyncListenableFutureCallTest() throws InterruptedException {
+        asyncService.asyncListenableFutureCall();
+    }
+
+    @Test
+    void asyncCompletableFutureCallTest() throws InterruptedException {
+        asyncService.asyncCompletableFutureCall();
     }
 
 }
